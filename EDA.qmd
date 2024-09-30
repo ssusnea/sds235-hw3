@@ -1,0 +1,12 @@
+---
+title: "EDA"
+format: html
+---
+
+```{r}
+library(tidyverse)
+
+# loading in traffic data: 
+traffic <- read_csv("hw03-data/Traffic Data/Lekagul Sensor Data.csv")
+```
+
