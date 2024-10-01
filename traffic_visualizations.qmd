@@ -51,6 +51,7 @@ coordinates_list <- list(
   "general-gate0" = c(110, 9),
   "general-gate1" = c(64, 25),
   "general-gate2" = c(104, 32),
+  "general-gate3" = c(186,55),
   "general-gate4" = c(69, 98),
   "general-gate5" = c(124, 111),
   "general-gate6" = c(136, 137),
@@ -73,19 +74,10 @@ traffic_clean <- traffic_clean |>
   )
 ```
 
-
 ```{r}
-# checking if coordinates are all assigned, compared to the raw data
-check <- traffic_clean |>
-  group_by(gate_name, coordinates) |>
-  summarise(n = n())
-check_raw <- traffic_raw |>
-  group_by(`gate-name`) |>
-  summarise(n = n())
-
-# check if there are missing gates that are not assigned with an coordinate
-missing_coords <- traffic_clean %>%
-  filter(is.null(coordinates)) %>%
+# check if there are gates that are not assigned with an coordinate
+missing_coords <- traffic_clean |>
+  filter(is.null(coordinates)) |>
   select(gate_name)
 
 if (nrow(missing_coords) > 0) {
@@ -104,45 +96,91 @@ traffic_clean <- traffic_clean |>
 ```
 
 ```{r}
-library(ggplot2)
+# check if there are gates that have missing x coordinate
+missing_coords <- traffic_clean |>
+  filter(is.null(x)) |>
+  select(gate_name)
 
-ggplot(data = traffic_clean, aes(x = ))
+if (nrow(missing_coords) > 0) {
+  warning("The following gate names do not have corresponding x:")
+  print(missing_coords)
+}
+
+# check if there are gates that have missing y coordinate
+missing_coords <- traffic_clean |>
+  filter(is.null(y)) |>
+  select(gate_name)
+
+if (nrow(missing_coords) > 0) {
+  warning("The following gate names do not have corresponding x:")
+  print(missing_coords)
+}
 ```
 
 ```{r}
-library(tidyverse)
+# Separate the timestamp column into date and time
+traffic_clean <- traffic_clean |> 
+  separate(timestamp, into = c("date", "time"), sep = " ")
+```
 
-# Step 1: Create a data frame for gates and their coordinates
+```{r}
+# Create a data frame for gates and their coordinates
 gates_data <- data.frame(
-  gate_name = c("camping0", "camping1", "camping2", "camping3", "camping4",
-                "camping5", "camping6", "camping7", "camping8", "entrance0",
-                "entrance1", "entrance2", "entrance3", "entrance4", "gate0",
-                "gate1", "gate2", "gate3", "gate4", "gate5", "gate6",
-                "gate7", "gate8", "general-gate0", "general-gate1",
-                "general-gate2", "general-gate4", "general-gate5",
-                "general-gate6", "general-gate7", "ranger-base", 
-                "ranger-stop0", "ranger-stop1", "ranger-stop2", 
-                "ranger-stop3", "ranger-stop4", "ranger-stop5", 
-                "ranger-stop6", "ranger-stop7"),
-  x = c(52, 129, 44, 45, 48, 20, 150, 181, 183, 62, 
-        17, 183, 115, 140, 63, 58, 24, 149, 164, 131, 
-        116, 87, 138, 110, 64, 104, 69, 124, 136, 65, 
-        128, 89, 19, 80, 148, 18, 151, 123, 100),
-  y = c(41, 50, 64, 68, 89, 121, 177, 145, 48, 13, 
-        67, 87, 167, 184, 33, 44, 54, 60, 114, 146, 
-        151, 160, 181, 9, 25, 32, 98, 111, 137, 144, 
-        175, 16, 24, 35, 45, 95, 118, 147, 152)
+  gate_name = names(coordinates_list),  # Get the names of the gates from coordinates_list
+  x = sapply(coordinates_list, `[`, 1),  # Extract the first element (x coordinate) from each entry
+  y = sapply(coordinates_list, `[`, 2)   # Extract the second element (y coordinate) from each entry
 )
 
-# Step 2: Create the gate map using ggplot2
+# Create the gate map using ggplot2
 ggplot(gates_data, aes(x = x, y = y, label = gate_name)) +
   geom_point(color = "blue", size = 3) +  # Points for each gate
   geom_text(vjust = -1, hjust = 0.5) +  # Add text labels for the gates
   labs(title = "Map of Gates",
        x = "X Coordinate",
        y = "Y Coordinate") +
-  theme_minimal() + # Use a minimal theme for a clean look
+  theme_minimal() + 
   scale_y_reverse()  # Reverse the y-axis
+```
 
+```{r}
+library(ggplot2)
+library(viridis)
+
+# Create the heat map using geom_bin2d
+ggplot(traffic_clean, aes(x = x, y = y)) +
+  geom_bin2d(bins = 30) +  # Create a 2D binning for the heat map
+  scale_fill_viridis_c(option = "C", direction = -1) +  # Use viridis color scale
+  labs(title = "Heat Map of Car Density at Each Gate Based on Coordinates",
+       x = "X Coordinate",
+       y = "Y Coordinate",
+       fill = "Number of Cars Checked") + 
+  theme_minimal() +  # Use a minimal theme for a clean look
+  scale_y_reverse() +  # Reverse the y-axis to have (0,0) at the top left
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+```
+
+```{r}
+# Check for non-finite values in x and y coordinates
+non_finite_rows <- traffic_clean |>
+  filter(is.na(x) | is.na(y) | !is.finite(x) | !is.finite(y))
+
+# Print the non-finite rows
+if (nrow(non_finite_rows) > 0) {
+  print("Rows with non-finite values in x or y:")
+  print(non_finite_rows)
+} else {
+  print("No non-finite values found in x and y coordinates.")
+}
+```
+
+```{r}
+# Check for missing or non-finite values in x and y
+missing_data <- traffic_clean |>
+  filter(is.na(x) | is.na(y) | !is.finite(x) | !is.finite(y))
+
+if (nrow(missing_data) > 0) {
+  print("Rows with missing or non-finite values:")
+  print(missing_data)
+}
 ```
 
