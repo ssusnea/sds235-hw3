@@ -66,7 +66,9 @@ coordinates_list <- list(
   "ranger-stop6" = c(123, 147),
   "ranger-stop7" = c(100,152)
 )
+```
 
+```{r}
 # Assign coordinates to the traffic dataset using mutate
 traffic_clean <- traffic_clean |>
   mutate(
@@ -148,7 +150,7 @@ library(viridis)
 
 # Create the heat map using geom_bin2d
 ggplot(traffic_clean, aes(x = x, y = y)) +
-  geom_bin2d(bins = 30) +  # Create a 2D binning for the heat map
+  geom_bin2d() +  # Create a 2D binning for the heat map
   scale_fill_viridis_c(option = "C", direction = -1) +  # Use viridis color scale
   labs(title = "Heat Map of Car Density at Each Gate Based on Coordinates",
        x = "X Coordinate",
@@ -184,3 +186,75 @@ if (nrow(missing_data) > 0) {
 }
 ```
 
+# black background
+```{r}
+# Load necessary packages
+library(ggplot2)
+library(viridis)
+library(magick)
+library(grid)
+
+# Read the BMP image
+bg_image <- image_read("hw03-data/Traffic Data/Lekagul Roadways.bmp")
+
+# Convert the image to a raster object
+bg_raster <- as.raster(bg_image)
+
+# Create the heat map using geom_bin2d
+heatmap <- ggplot() +  # Start ggplot without data to add background image first
+  # Add the background image
+  annotation_custom(rasterGrob(bg_raster, width = unit(1, "npc"), height = unit(1, "npc")),  
+                    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
+  # Now add the heatmap layer
+  geom_bin2d(data = traffic_clean, aes(x = x, y = y), bins = 30) +  # Create a 2D binning for the heat map
+  scale_fill_viridis_c(option = "C", direction = -1) +  # Use viridis color scale
+  labs(title = "Heat Map of Car Density at Each Gate Based on Coordinates",
+       x = "X Coordinate",
+       y = "Y Coordinate",
+       fill = "Number of Cars Checked") + 
+  theme_minimal() +  # Use a minimal theme for a clean look
+  scale_y_reverse() +  # Reverse the y-axis to have (0,0) at the top left
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+# Print the heatmap
+print(heatmap)
+
+```
+
+# white background
+```{r}
+# Load necessary packages
+library(ggplot2)
+library(viridis)
+library(magick)
+library(grid)
+
+# Read the BMP image
+bg_image <- image_read("hw03-data/Traffic Data/Lekagul Roadways.bmp")
+
+# Invert the colors (black to white and white to black)
+bg_image_inverted <- image_negate(bg_image)
+
+# Convert the inverted image to a raster object
+bg_raster <- as.raster(bg_image_inverted)
+
+# Create the heat map using geom_bin2d
+heatmap <- ggplot() +  # Start ggplot without data to add background image first
+  # Add the inverted background image
+  annotation_custom(rasterGrob(bg_raster, width = unit(1, "npc"), height = unit(1, "npc")),  
+                    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
+  # Now add the heatmap layer
+  geom_bin2d(data = traffic_clean, aes(x = x, y = y)) +  # Create a 2D binning for the heat map
+  scale_fill_viridis_c(option = "C", direction = -1) +  # Use viridis color scale
+  labs(title = "Heat Map of Car Density at Each Gate Based on Coordinates",
+       x = "X Coordinate",
+       y = "Y Coordinate",
+       fill = "Number of Cars Checked") + 
+  theme_minimal() +  # Use a minimal theme for a clean look
+  scale_y_reverse() +  # Reverse the y-axis to have (0,0) at the top left
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+# Print the heatmap
+print(heatmap)
+
+```
