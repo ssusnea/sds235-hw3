@@ -305,7 +305,7 @@ widgets <- bscols(
 
 bscols(
   widths = c(4, 8), widgets, 
-  plot_ly(s, x = ~`Date Time`, y = ~Reading) |> 
+  plot_ly(s, x = ~Date, y = ~Reading) |> 
     add_lines(color = ~Chemical, colors = "blue")
 )
 ```
