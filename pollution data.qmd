@@ -435,3 +435,29 @@ bscols(
 
 
 
+## from the final document: 
+
+```{r}
+# highlight(
+#   g,
+#   on = "plotly_click",
+#   selectize = TRUE
+# )
+
+
+# this has is relative to the entire park(?)
+f <- ggplot(data = grid, aes(x = X, y = Y)) + 
+  geom_point(data = locations, aes(x = X, y = Y, shape = type, color = type)) +
+  coord_cartesian(xlim = c(0, 200), ylim = c(0, 200)) + 
+  theme_minimal() + 
+  ggtitle("Mapping Sensors and Factories")
+
+f <- ggplotly(f, tooltip = c("name"))
+
+# present data by month:
+sensor_month |>
+  group_by(Chemical) |>
+  group_map(~plot_ly(data=., x = ~X, y = ~Y, size = ~avg_reading, color = ~Chemical, colors = color_palette, frame = ~Month, type = "scatter", mode = "markers", hoverinfo = "text", text = ~Monitor), keep=TRUE) |>
+  subplot(nrows = 2, shareX = TRUE, shareY=TRUE)
+```
+
