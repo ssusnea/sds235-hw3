@@ -21,8 +21,6 @@ sensor <- readxl::read_xlsx("hw03-data/Sensor Data/Sensor Data.xlsx")
 ## create the data: 
 
 # data for the locations of the items of interest
-
-# data for the locations of the items of interest
 locations <- data.frame(
   name = c("Roadrunner Fitness Electronics", "Radiance ColourTek", "Kasios Office Furniture", "Indigo Sol Boards", "1", "2", "3", "4", "5", "6", "7", "8", "9"), 
   type = c("Factory", "Factory", "Factory", "Factory", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor"),
@@ -37,23 +35,25 @@ grid <- data.frame(
 )
 
 # modify the sensor data a little 
-sensor <- sensor |> 
-  mutate(Month = case_when(
-    stringr::str_detect(`Date Time`, "-04-") ~ "April",
-    stringr::str_detect(`Date Time`, "-08-") ~ "August",
-    stringr::str_detect(`Date Time`, "-12-") ~ "December",
-    )
-  )
 
 sensor[c("Date", "Time")] <- stringr::str_split_fixed(sensor$`Date Time`, " ", 2)
 
 sensor <- sensor |> 
   select(-Time) |> 
-  group_by(Monitor, Chemical, Date, Month) |> 
+  group_by(Monitor, Chemical, Date) |> 
   mutate(Reading = max(Reading)) |> 
   distinct(Reading) |> 
   ungroup()
 
+sensor <- sensor |> 
+  mutate(Month = case_when(
+    stringr::str_detect(Date, "-04-") ~ "April",
+    stringr::str_detect(Date, "-08-") ~ "August",
+    stringr::str_detect(Date, "-12-") ~ "December",
+    )
+  )
+
+# sensor data with added coordinate data
 sensor2 <- sensor |>
   mutate(Monitor = as.character(Monitor)) |> 
   left_join(
