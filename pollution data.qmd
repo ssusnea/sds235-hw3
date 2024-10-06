@@ -125,7 +125,7 @@ sensor[c("Date", "Time")] <- stringr::str_split_fixed(sensor$`Date Time`, " ", 2
 
 sensor <- sensor |> 
   select(-Time) |> 
-  group_by(Monitor, Chemical, Date) |> 
+  group_by(Monitor, Chemical, Date, Month) |> 
   mutate(Reading = max(Reading)) |> 
   distinct(Reading) |> 
   ungroup()
