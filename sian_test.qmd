@@ -1,0 +1,206 @@
+---
+title: "sian test"
+output: html_document
+date: "2024-10-06"
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(plotly)
+library(ggplot2)
+library(crosstalk)
+
+meteorological <- readxl::read_xlsx("hw03-data/Sensor Data/Meteorological Data.xlsx", range = "A1:C459")
+
+sensor <- readxl::read_xlsx("hw03-data/Sensor Data/Sensor Data.xlsx")
+```
+
+
+```{r}
+## create the data: 
+
+# data for the locations of the items of interest
+
+# data for the locations of the items of interest
+locations <- data.frame(
+  name = c("Roadrunner Fitness Electronics", "Radiance ColourTek", "Kasios Office Furniture", "Indigo Sol Boards", "1", "2", "3", "4", "5", "6", "7", "8", "9"), 
+  type = c("Factory", "Factory", "Factory", "Factory", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor"),
+  X = c(89, 90, 109, 120, 62, 66, 76, 88, 103, 102, 89, 74, 119), 
+  Y = c(27, 21, 26, 22, 21, 35, 41, 45, 43, 22, 3, 7, 42)
+)
+
+# layout the grid of the entire park 
+grid <- data.frame(
+  X = seq(1, 200, 1), 
+  Y = seq(1, 200, 1)
+)
+
+# modify the sensor data a little 
+sensor <- sensor |> 
+  mutate(Month = case_when(
+    stringr::str_detect(`Date Time`, "-04-") ~ "April",
+    stringr::str_detect(`Date Time`, "-08-") ~ "August",
+    stringr::str_detect(`Date Time`, "-12-") ~ "December",
+    )
+  )
+
+sensor[c("Date", "Time")] <- stringr::str_split_fixed(sensor$`Date Time`, " ", 2)
+
+sensor <- sensor |> 
+  select(-Time) |> 
+  group_by(Monitor, Chemical, Date, Month) |> 
+  mutate(Reading = max(Reading)) |> 
+  distinct(Reading) |> 
+  ungroup()
+
+sensor2 <- sensor |>
+  mutate(Monitor = as.character(Monitor)) |> 
+  left_join(
+    locations |> filter(type == "Sensor"),
+    by = join_by("Monitor" == "name")
+  )
+
+
+sensor_month <- sensor2 |>
+  group_by(Monitor, Chemical, Month, type, X, Y) |>
+  summarize(avg_reading = mean(Reading))
+
+
+factory_locations <- locations |>
+  filter(type == "Factory")
+```
+
+
+
+```{r}
+g <- plot_ly(data = locations, x = ~X, y = ~Y, symbol = ~type, type = "scatter", mode = "markers")
+
+highlight(
+  g,
+  on = "plotly_click",
+  selectize = TRUE,
+  dynamic = TRUE
+)
+```
+
+
+
+
+
+
+
+```{r}
+
+color_palette <- c("AGOC-3A" = "blue", "Appluimonia" = "orange", "Chlorodinine" = "green", "Methylosmolene" = "red")
+
+
+sensor_month |>
+  group_by(Chemical) |>
+  group_map(~plot_ly(data=., x = ~X, y = ~Y, size = ~avg_reading, color = ~Chemical, colors = color_palette, frame = ~Month, type = "scatter", mode = "markers"), keep=TRUE) |>
+  subplot(nrows = 2, shareX = TRUE, shareY=TRUE)
+```
+
+
+
+
+# OLD
+
+```{r}
+s <- highlight_key(sensor_month) 
+# Step 2: Create filter select for choosing one Chemical
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_select("Chemical", "Chemicals", s, ~Chemical, multiple = FALSE)  # Single selection
+)
+
+# Step 3: Create scatter plot using the shared data
+scatter_plot <- plot_ly(data = s, x = ~X, y = ~Y, frame = ~Month, type = "scatter", mode = "markers") %>%
+  add_markers(
+    marker = list(size = ~avg_reading, color = "blue"),  # Size based on avg_reading, filtered by selected chemical
+    showlegend = FALSE  # Optional: Hide legend if not needed
+  )
+
+# Step 4: Combine the widget and the plot in a layout
+bscols(
+  widths = c(4, 8),  # Layout with 4 for widgets, 8 for the plot
+  widgets,           # Add widgets (filter_select) here
+  scatter_plot       # Add scatter plot here
+)
+```
+
+
+
+```{r}
+s <- highlight_key(sensor) 
+
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_select("Month", "Months", s, ~Month),
+  filter_select("Monitor", "Monitors", s, ~Monitor),
+  filter_checkbox("Chemical", "Chemicals", s, ~Chemical, inline = TRUE)
+)
+
+bscols(
+  widths = c(4, 8), widgets, 
+  plot_ly(s, x = ~Date, y = ~Reading) |> 
+    add_lines(color = ~Chemical)
+)
+```
+
+
+
+
+```{r}
+
+
+
+
+plot_ly(data = sensor_month, x = ~X, y = ~Y, size = ~avg_reading, frame = ~Month, type = "scatter", mode = "markers") +
+   subplot(nrows = 1, shareX = TRUE, shareY = TRUE)
+
+
+
+
+
+g <- plot_ly(data = sensor_month, x = ~X, y = ~Y, size = ~avg_reading, frame = ~Month, type = "scatter", mode = "markers")
+
+
+s <- highlight(
+  g,
+  on = "plotly_click",
+  selectize = TRUE,
+  dynamic = TRUE
+)
+
+
+
+
+
+
+
+
+s <- highlight_key(sensor_month) 
+
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_select("Chemical", "Chemicals", s, ~Chemical, multiple = FALSE)
+)
+
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_checkbox("Chemical", "Chemicals", s, ~Chemical, inline = TRUE)
+)
+
+bscols(
+  widths = c(4, 8), widgets, 
+  plot_ly(data = s, x = ~X, y = ~Y, frame = ~Month, type = "scatter", mode = "markers") |>
+    add_markers(marker = list(size = ~avg_reading, color = ~Chemical))
+)
+
+
+
+
+```
+
+
