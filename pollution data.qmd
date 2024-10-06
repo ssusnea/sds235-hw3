@@ -334,3 +334,104 @@ bscols(
 )
 ```
 
+# from sian's document: # OLD
+
+```{r}
+s <- highlight_key(sensor_month) 
+# Step 2: Create filter select for choosing one Chemical
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_select("Chemical", "Chemicals", s, ~Chemical, multiple = FALSE)  # Single selection
+)
+
+# Step 3: Create scatter plot using the shared data
+scatter_plot <- plot_ly(data = s, x = ~X, y = ~Y, frame = ~Month, type = "scatter", mode = "markers") %>%
+  add_markers(
+    marker = list(size = ~avg_reading, color = "blue"),  # Size based on avg_reading, filtered by selected chemical
+    showlegend = FALSE  # Optional: Hide legend if not needed
+  )
+
+# Step 4: Combine the widget and the plot in a layout
+bscols(
+  widths = c(4, 8),  # Layout with 4 for widgets, 8 for the plot
+  widgets,           # Add widgets (filter_select) here
+  scatter_plot       # Add scatter plot here
+)
+```
+
+
+
+```{r}
+s <- highlight_key(sensor) 
+
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_select("Month", "Months", s, ~Month),
+  filter_select("Monitor", "Monitors", s, ~Monitor),
+  filter_checkbox("Chemical", "Chemicals", s, ~Chemical, inline = TRUE)
+)
+
+bscols(
+  widths = c(4, 8), widgets, 
+  plot_ly(s, x = ~Date, y = ~Reading) |> 
+    add_lines(color = ~Chemical)
+)
+```
+
+
+
+
+```{r}
+
+
+
+
+plot_ly(data = sensor_month, x = ~X, y = ~Y, size = ~avg_reading, frame = ~Month, type = "scatter", mode = "markers") +
+   subplot(nrows = 1, shareX = TRUE, shareY = TRUE)
+
+
+
+
+
+g <- plot_ly(data = sensor_month, x = ~X, y = ~Y, size = ~avg_reading, frame = ~Month, type = "scatter", mode = "markers")
+
+
+s <- highlight(
+  g,
+  on = "plotly_click",
+  selectize = TRUE,
+  dynamic = TRUE
+)
+
+
+
+
+
+
+
+
+s <- highlight_key(sensor_month) 
+
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_select("Chemical", "Chemicals", s, ~Chemical, multiple = FALSE)
+)
+
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_checkbox("Chemical", "Chemicals", s, ~Chemical, inline = TRUE)
+)
+
+bscols(
+  widths = c(4, 8), widgets, 
+  plot_ly(data = s, x = ~X, y = ~Y, frame = ~Month, type = "scatter", mode = "markers") |>
+    add_markers(marker = list(size = ~avg_reading, color = ~Chemical))
+)
+
+
+
+
+```
+
+
+
