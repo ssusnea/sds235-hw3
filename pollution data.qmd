@@ -1,0 +1,337 @@
+---
+title: "pollution vis"
+format: html
+---
+
+
+
+
+```{r}
+# first create a data frame with locations of all the factories and sensors: 
+
+locations <- data.frame(
+  name = c("Roadrunner Fitness Electronics", "Radiance ColourTek", "Kasios Office Furniture", "Indigo Sol Boards", "1", "2", "3", "4", "5", "6", "7", "8", "9"), 
+  type = c("Factory", "Factory", "Factory", "Factory", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor"),
+  X = c(89, 90, 109, 120, 62, 66, 76, 88, 103, 102, 89, 74, 119), 
+  Y = c(27, 21, 26, 22, 21, 35, 41, 45, 43, 22, 3, 7, 42)
+)
+
+grid <- data.frame(
+  X = seq(1, 200, 1), 
+  Y = seq(1, 200, 1)
+)
+
+# create a mock df to layout the geom_tile: 
+one_day <- sensor |> 
+  filter(grepl("^2016-04-01", `Date Time`)) |> 
+  mutate(Monitor = as.character(Monitor)) |> 
+  left_join(
+    locations |> filter(type == "Sensor"), 
+    by = join_by("Monitor" == "name")
+  ) |> 
+  filter(`Date Time` == "2016-04-01 18:00:00")
+
+sensor_mutated <- sensor
+
+sensor_mutated[c("Date", "Time")] <- stringr::str_split_fixed(sensor$`Date Time`, " ", 2)
+
+```
+
+```{r}
+# create the very basic grid layout
+ggplot(data = grid, aes(x = X, y = Y)) + 
+  geom_point(data = locations, aes(x = X, y = Y, shape = type)) + 
+  geom_tile(data = one_day, aes(x = X, y = Y, fill = Reading)) + 
+  facet_wrap(~Chemical)
+```
+
+I don't think this will quite work because there's only readings at each point. and I could try to map where the pollution is going based on the wind but that's ... kinda a lot. I think for this we will use a lineplot. maybe. 
+
+```{r}
+sensor |> 
+  filter(Monitor == 1) |> 
+ggplot(aes(x = `Date Time`, y = Reading)) +
+  geom_line(aes(group = Chemical), alpha = 0.2)
+```
+
+```{r}
+plot_ly(sensor, x = ~`Date Time`, y = ~Reading, type = 'scatter', mode = 'line')
+```
+
+also noticed that the sensors only collect for april, august, and december. so every four months? 
+
+
+
+WAIT: 
+
+let's plot the location of the factories and sensors over the static map of the park. 
+
+and then if you click on one of the sensors it will pull up a lineplot faceted by month which will give you the levels of pollution? 
+
+```{r}
+g <- ggplot(data = grid, aes(x = X, y = Y)) + 
+  geom_point(data = locations, aes(x = X, y = Y, shape = type)) + 
+  coord_cartesian(xlim = c(0, 200), ylim = c(0, 200))
+
+g <- ggplotly(g, tooltip = "type") 
+
+
+g <- highlight(g, on = "plotly_click", color = "red")
+
+g
+```
+
+## START HERE:  
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(plotly)
+library(ggplot2)
+library(crosstalk)
+
+meteorological <- readxl::read_xlsx("hw03-data/Sensor Data/Meteorological Data.xlsx", range = "A1:C459")
+
+sensor <- readxl::read_xlsx("hw03-data/Sensor Data/Sensor Data.xlsx")
+```
+
+```{r}
+## create the data: 
+
+# data for the locations of the items of interest
+locations <- data.frame(
+  name = c("Roadrunner Fitness Electronics", "Radiance ColourTek", "Kasios Office Furniture", "Indigo Sol Boards", "1", "2", "3", "4", "5", "6", "7", "8", "9"), 
+  type = c("Factory", "Factory", "Factory", "Factory", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor", "Sensor"),
+  X = c(89, 90, 109, 120, 62, 66, 76, 88, 103, 102, 89, 74, 119), 
+  Y = c(27, 21, 26, 22, 21, 35, 41, 45, 43, 22, 3, 7, 42)
+)
+
+# layout the grid of the entire park 
+grid <- data.frame(
+  X = seq(1, 200, 1), 
+  Y = seq(1, 200, 1)
+)
+
+# modify the sensor data a little 
+sensor <- sensor |> 
+  mutate(Month = case_when(
+    stringr::str_detect(`Date Time`, "-04-") ~ "April",
+    stringr::str_detect(`Date Time`, "-08-") ~ "August",
+    stringr::str_detect(`Date Time`, "-12-") ~ "December",
+    )
+  )
+
+sensor[c("Date", "Time")] <- stringr::str_split_fixed(sensor$`Date Time`, " ", 2)
+
+sensor <- sensor |> 
+  select(-Time) |> 
+  group_by(Monitor, Chemical, Date) |> 
+  mutate(Reading = max(Reading)) |> 
+  distinct(Reading) |> 
+  ungroup()
+
+sensor2 <- sensor |>
+  mutate(Monitor = as.character(Monitor)) |> 
+  left_join(
+    locations |> filter(type == "Sensor"),
+    by = join_by("Monitor" == "name")
+  )
+
+# create the first shared data 
+
+# shared1 <- SharedData$new(locations, group = "shareddata", key = ~name)
+# 
+# shared2 <- SharedData$new(sensor, group = "shareddata", key = ~Monitor)
+
+```
+
+```{r}
+
+b <- (plot_ly(data = shared1, x = ~X, y = ~Y, symbol = ~type))
+
+gg <- highlight(
+  b, 
+  on = "plotly_click", 
+  selectize = TRUE, 
+  dynamic = TRUE
+)
+
+gg
+
+l <- plot_ly(data = sensor, x = ~`Date Time`, y = ~Reading, type = 'scatter', mode = 'lines', color = ~Chemical)
+
+l
+
+l <- shared2 |> 
+  group_by(Month) |> 
+  filter(Chemical == 'Chlorodinine') |>
+  group_map(~ plot_ly(data=., x = ~`Date Time`, y = ~Reading, color = ~Chemical, type = "scatter", mode='lines'), .keep=TRUE) |> 
+  subplot(nrows = 1, shareX = TRUE, shareY=TRUE)
+
+subplot(
+  g, l
+)
+
+subplot(gg, l, widths = c(.2, .8), titleX = TRUE)
+
+```
+
+
+```{r}
+# tx <- highlight_key(txhousing)
+## might not need this
+gg <- ggplot(locations) + geom_point(aes(x = X, y = Y, shape = type))
+filter <- bscols(
+  filter_select("id", "Select a sensor", shared1, ~name),
+  ggplotly(gg, dynamicTicks = TRUE),
+  widths = c(12, 12)
+)
+
+gg
+
+tx2 <- highlight_key(txhousing, ~city, "Select a city")
+gg <- ggplot(tx2) + geom_line(aes(date, median, group = city))
+select <- highlight(
+  ggplotly(gg, tooltip = "city"), 
+  selectize = TRUE, persistent = TRUE
+)
+
+bscols(filter, select)
+```
+
+
+Try to just make interactive: 
+
+```{r}
+g <- plot_ly(data = locations, x = ~X, y = ~Y, symbol = ~type, type = "scatter", mode = "markers")
+
+highlight(
+  g,
+  on = "plotly_click",
+  selectize = TRUE,
+  dynamic = TRUE
+)
+```
+
+```{r}
+# bad attempt
+lineplot <- sensor |> 
+  highlight_key(~Monitor) |> 
+    ggplot(data = sensor, aes(x = `Date Time`, y = Reading, group = Monitor)) + geom_line() + facet_wrap(~Month, ncol = 2)
+   |> 
+  ggplotly(tooltip = "year")
+  
+```
+
+```{r}
+sensor |> 
+  group_by(Chemical) |> 
+  do(
+    p = highlight_key(., ~Monitor, group = "Monitor") |> 
+      plot_ly(showlegend = FALSE) |> 
+      group_by(Monitor) |> 
+      add_lines(
+        x = ~`Date Time`, y = ~Reading, text = ~Monitor,
+        hoverinfo = "text"
+      ) |> 
+      add_annotations(
+        text = ~unique(Chemical),
+        x = 0.5, y = 1,
+        xref = "paper", yref = "paper",
+        xanchor = "center", yanchor = "bottom",
+        showarrow = FALSE
+      )
+  ) |> 
+  subplot(
+    nrows = 2, margin = 0.05,
+    shareY = TRUE, shareX = TRUE, titleY = FALSE
+  )
+```
+
+```{r}
+## we can select the points now...  
+point <- locations |> 
+  highlight_key(~name) |> 
+  plot_ly(
+    x = ~X, y = ~Y,  symbol = ~type, type = "scatter", mode = "markers", hoverinfo = "name"
+  ) |> 
+  highlight(on = "plotly_click", off = "plotly_doubleclick")
+
+
+test <- highlight_key(sensor, ~Monitor)
+
+base <- plot_ly(test) |> 
+  group_by(Monitor)
+
+base |> 
+  group_by(Monitor) |> 
+  add_lines(x = ~`Date Time`, y = ~Reading)
+```
+
+
+# now try based off of this thing: 
+
+```{r}
+hl <- highlight_key(sensor2, ~Monitor)
+
+base <- plot_ly(hl, color = I("black")) |> 
+  group_by(Monitor)
+
+dot_plot <- base |> 
+  add_markers(
+    x = ~X,
+    y = ~Y,
+    symbol = ~type,
+    hoverinfo = ~Monitor
+  )
+
+lineplot <- base |> 
+  
+
+```
+
+
+# this is one option!!!
+```{r}
+# something here!!! 
+s <- highlight_key(sensor) 
+
+widgets <- bscols(
+  widths = c(12, 12, 12),
+  filter_select("Month", "Months", s, ~Month),
+  filter_select("Monitor", "Monitors", s, ~Monitor),
+  filter_checkbox("Chemical", "Chemicals", s, ~Chemical, inline = TRUE)
+)
+
+bscols(
+  widths = c(4, 8), widgets, 
+  plot_ly(s, x = ~`Date Time`, y = ~Reading) |> 
+    add_lines(color = ~Chemical, colors = "blue")
+)
+```
+
+# trying to make plot and lineplot!!!
+```{r}
+dates <- filter_slider(
+  "Date", "Dates",
+  s, ~Date
+)
+
+p <- plot_ly(s, x = ~Date, y = ~Reading, type = 'scatter', mode = 'lines', color = ~Chemical) |> 
+  add_lines() 
+  
+p
+
+point <- locations |> 
+  highlight_key(~name) |> 
+  plot_ly(
+    x = ~X, y = ~Y,  symbol = ~type, type = "scatter", mode = "markers", hoverinfo = "name"
+  ) |> 
+  highlight(on = "plotly_click", off = "plotly_doubleclick")
+
+bscols(
+  dates, p, point
+)
+```
+
+
