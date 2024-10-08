@@ -74,16 +74,16 @@ factory_locations <- locations |>
 
 
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, echo = FALSE}
 # Create visualization of location of sensors and factories
-g <- plot_ly(data = locations, x = ~X, y = ~Y, symbol = ~type, type = "scatter", mode = "markers", hoverinfo = "text", text = ~name) |> 
+plot_ly(data = locations, x = ~X, y = ~Y, symbol = ~type, type = "scatter", mode = "markers", hoverinfo = "text", text = ~name) |> 
   layout(title = "Mapping Sensors and Factories")
 
 ```
 
 
 Create visualization of pollution readings: 
-```{r, warning=FALSE}
+```{r, warning=FALSE, echo = FALSE}
 # define color palette: 
 color_palette <- c("AGOC-3A" = "blue", "Appluimonia" = "orange", "Chlorodinine" = "green", "Methylosmolene" = "red")
 
