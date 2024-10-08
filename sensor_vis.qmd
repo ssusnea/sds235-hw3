@@ -4,7 +4,7 @@ output: html
 date: "2024-10-06"
 ---
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(readxl)
 library(plotly)
@@ -74,7 +74,7 @@ factory_locations <- locations |>
 
 
 
-```{r}
+```{r, warning=FALSE}
 # Create visualization of location of sensors and factories
 g <- plot_ly(data = locations, x = ~X, y = ~Y, symbol = ~type, type = "scatter", mode = "markers", hoverinfo = "text", text = ~name) |> 
   layout(title = "Mapping Sensors and Factories")
@@ -83,7 +83,7 @@ g <- plot_ly(data = locations, x = ~X, y = ~Y, symbol = ~type, type = "scatter",
 
 
 Create visualization of pollution readings: 
-```{r}
+```{r, warning=FALSE}
 # define color palette: 
 color_palette <- c("AGOC-3A" = "blue", "Appluimonia" = "orange", "Chlorodinine" = "green", "Methylosmolene" = "red")
 
